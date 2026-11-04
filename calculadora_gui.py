@@ -1,8 +1,29 @@
+import math
+
 import FreeSimpleGUI as sg
 
 
 def formatar_numero(valor):
     return format(valor, ".15g")
+
+
+def calcular(primeiro_valor, segundo_valor, operacao):
+    if operacao == "+":
+        resultado = primeiro_valor + segundo_valor
+    elif operacao == "-":
+        resultado = primeiro_valor - segundo_valor
+    elif operacao == "*":
+        resultado = primeiro_valor * segundo_valor
+    elif operacao == "/":
+        if segundo_valor == 0:
+            raise ZeroDivisionError
+        resultado = primeiro_valor / segundo_valor
+    else:
+        raise ValueError("Operação inválida")
+
+    if not math.isfinite(resultado):
+        raise ValueError("Resultado fora do limite")
+    return resultado
 
 
 def main():
@@ -13,8 +34,8 @@ def main():
             sg.Input(
                 "0",
                 key="-DISPLAY-",
-                size=(16, 1),
-                font=("Helvetica", 24),
+                size=(25, 1),
+                font=("Helvetica", 18),
                 justification="right",
                 readonly=True,
                 expand_x=True,
@@ -54,6 +75,13 @@ def main():
     operacao_pendente = None
     iniciar_novo_numero = False
 
+    def mostrar_erro(mensagem):
+        nonlocal display, valor_guardado, operacao_pendente, iniciar_novo_numero
+        display = mensagem
+        valor_guardado = None
+        operacao_pendente = None
+        iniciar_novo_numero = True
+
     while True:
         event, _ = window.read()
         if event == sg.WIN_CLOSED:
@@ -65,44 +93,68 @@ def main():
             operacao_pendente = None
             iniciar_novo_numero = False
         elif event == "-BACKSPACE-":
-            if not iniciar_novo_numero:
+            if not iniciar_novo_numero and not display.startswith("Erro:"):
                 display = display[:-1] or "0"
-        elif event in "+-*/":
-            if display == "Erro":
-                display = "0"
-            valor_guardado = float(display)
-            operacao_pendente = event
-            iniciar_novo_numero = True
-        elif event == "-EQUALS-" and operacao_pendente is not None:
-            segundo_valor = float(display)
-            if operacao_pendente == "+":
-                resultado = valor_guardado + segundo_valor
-            elif operacao_pendente == "-":
-                resultado = valor_guardado - segundo_valor
-            elif operacao_pendente == "*":
-                resultado = valor_guardado * segundo_valor
+        elif event in {"+", "-", "*", "/"}:
+            if display.startswith("Erro:"):
+                pass
+            elif operacao_pendente is not None:
+                if iniciar_novo_numero:
+                    mostrar_erro("Erro: Expressão inválida")
+                else:
+                    try:
+                        primeiro_valor = float(valor_guardado)
+                        segundo_valor = float(display)
+                        resultado = calcular(
+                            primeiro_valor, segundo_valor, operacao_pendente
+                        )
+                    except ZeroDivisionError:
+                        mostrar_erro("Erro: Divisão por zero")
+                    except ValueError:
+                        mostrar_erro("Erro: Expressão inválida")
+                    else:
+                        display = formatar_numero(resultado)
+                        valor_guardado = resultado
+                        operacao_pendente = event
+                        iniciar_novo_numero = True
             else:
-                if segundo_valor == 0:
-                    display = "Erro"
+                try:
+                    valor_guardado = float(display)
+                    if not math.isfinite(valor_guardado):
+                        raise ValueError
+                except ValueError:
+                    mostrar_erro("Erro: Expressão inválida")
+                else:
+                    operacao_pendente = event
+                    iniciar_novo_numero = True
+        elif event == "-EQUALS-":
+            if operacao_pendente is None or iniciar_novo_numero:
+                mostrar_erro("Erro: Expressão inválida")
+            else:
+                try:
+                    segundo_valor = float(display)
+                    resultado = calcular(
+                        float(valor_guardado), segundo_valor, operacao_pendente
+                    )
+                except ZeroDivisionError:
+                    mostrar_erro("Erro: Divisão por zero")
+                except ValueError:
+                    mostrar_erro("Erro: Expressão inválida")
+                else:
+                    display = formatar_numero(resultado)
                     valor_guardado = None
                     operacao_pendente = None
                     iniciar_novo_numero = True
-                    window["-DISPLAY-"].update(display)
-                    continue
-                resultado = valor_guardado / segundo_valor
-
-            display = formatar_numero(resultado)
-            valor_guardado = None
-            operacao_pendente = None
-            iniciar_novo_numero = True
         elif event == ".":
-            if iniciar_novo_numero or display == "Erro":
+            if iniciar_novo_numero or display.startswith("Erro:"):
                 display = "0."
             elif "." not in display:
                 display += "."
             iniciar_novo_numero = False
         elif isinstance(event, str) and event.isdigit():
-            if iniciar_novo_numero or display in ("0", "Erro"):
+            if iniciar_novo_numero or display.startswith("Erro:"):
+                display = event
+            elif display == "0":
                 display = event
             else:
                 display += event

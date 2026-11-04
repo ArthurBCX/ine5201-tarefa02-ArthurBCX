@@ -67,6 +67,16 @@ def main():
             sg.Button("+", size=(5, 2), key="+"),
         ],
         [sg.Button("=", size=(23, 2), key="-EQUALS-", expand_x=True)],
+        [sg.Text("Histórico recente (últimos 5)")],
+        [
+            sg.Listbox(
+                values=[],
+                key="-HISTORY-",
+                size=(34, 5),
+                expand_x=True,
+                no_scrollbar=True,
+            )
+        ],
     ]
 
     window = sg.Window("Calculadora", layout, element_justification="center")
@@ -74,6 +84,7 @@ def main():
     valor_guardado = None
     operacao_pendente = None
     iniciar_novo_numero = False
+    historico = []
 
     def mostrar_erro(mensagem):
         nonlocal display, valor_guardado, operacao_pendente, iniciar_novo_numero
@@ -81,6 +92,14 @@ def main():
         valor_guardado = None
         operacao_pendente = None
         iniciar_novo_numero = True
+
+    def registrar_calculo(primeiro_valor, segundo_valor, operacao, resultado):
+        historico.append(
+            f"{formatar_numero(primeiro_valor)} {operacao} "
+            f"{formatar_numero(segundo_valor)} = {formatar_numero(resultado)}"
+        )
+        del historico[:-5]
+        window["-HISTORY-"].update(values=historico)
 
     while True:
         event, _ = window.read()
@@ -92,6 +111,8 @@ def main():
             valor_guardado = None
             operacao_pendente = None
             iniciar_novo_numero = False
+            historico.clear()
+            window["-HISTORY-"].update(values=historico)
         elif event == "-BACKSPACE-":
             if not iniciar_novo_numero and not display.startswith("Erro:"):
                 display = display[:-1] or "0"
@@ -113,6 +134,12 @@ def main():
                     except ValueError:
                         mostrar_erro("Erro: Expressão inválida")
                     else:
+                        registrar_calculo(
+                            primeiro_valor,
+                            segundo_valor,
+                            operacao_pendente,
+                            resultado,
+                        )
                         display = formatar_numero(resultado)
                         valor_guardado = resultado
                         operacao_pendente = event
@@ -132,15 +159,22 @@ def main():
                 mostrar_erro("Erro: Expressão inválida")
             else:
                 try:
+                    primeiro_valor = float(valor_guardado)
                     segundo_valor = float(display)
                     resultado = calcular(
-                        float(valor_guardado), segundo_valor, operacao_pendente
+                        primeiro_valor, segundo_valor, operacao_pendente
                     )
                 except ZeroDivisionError:
                     mostrar_erro("Erro: Divisão por zero")
                 except ValueError:
                     mostrar_erro("Erro: Expressão inválida")
                 else:
+                    registrar_calculo(
+                        primeiro_valor,
+                        segundo_valor,
+                        operacao_pendente,
+                        resultado,
+                    )
                     display = formatar_numero(resultado)
                     valor_guardado = None
                     operacao_pendente = None

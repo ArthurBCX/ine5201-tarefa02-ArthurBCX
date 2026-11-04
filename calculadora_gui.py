@@ -2,9 +2,7 @@ import FreeSimpleGUI as sg
 
 
 def formatar_numero(valor):
-    if valor == int(valor):
-        return str(int(valor))
-    return str(valor)
+    return format(valor, ".15g")
 
 
 def main():
@@ -20,7 +18,8 @@ def main():
                 justification="right",
                 readonly=True,
                 expand_x=True,
-            )
+            ),
+            sg.Button("←", size=(5, 2), key="-BACKSPACE-"),
         ],
         [
             sg.Button("7", size=(5, 2), key="7"),
@@ -43,7 +42,7 @@ def main():
         [
             sg.Button("C", size=(5, 2), key="-CLEAR-"),
             sg.Button("0", size=(5, 2), key="0"),
-            sg.Button("←", size=(5, 2), key="-BACKSPACE-"),
+            sg.Button(".", size=(5, 2), key="."),
             sg.Button("+", size=(5, 2), key="+"),
         ],
         [sg.Button("=", size=(23, 2), key="-EQUALS-", expand_x=True)],
@@ -96,6 +95,12 @@ def main():
             valor_guardado = None
             operacao_pendente = None
             iniciar_novo_numero = True
+        elif event == ".":
+            if iniciar_novo_numero or display == "Erro":
+                display = "0."
+            elif "." not in display:
+                display += "."
+            iniciar_novo_numero = False
         elif isinstance(event, str) and event.isdigit():
             if iniciar_novo_numero or display in ("0", "Erro"):
                 display = event
